@@ -24,6 +24,8 @@ const (
 	BusyAgentPercentage = "BusyAgentPercentage"
 
 	PollDurationHeader = `Buildkite-Agent-Metrics-Poll-Duration`
+
+	BintiRequiredAgentCount = "BintiRequiredAgentCount"
 )
 
 var (
@@ -223,6 +225,7 @@ func (c *Collector) collectAllQueues(httpClient *http.Client, result *Result) er
 		result.Queues[queueName][RunningJobsCount] = queueJobMetrics.Running
 		result.Queues[queueName][UnfinishedJobsCount] = queueJobMetrics.Total
 		result.Queues[queueName][WaitingJobsCount] = queueJobMetrics.Waiting
+		result.Queues[queueName][BintiRequiredAgentCount] = queueJobMetrics.Scheduled + queueJobMetrics.Running
 	}
 
 	for queueName, queueAgentMetrics := range allMetrics.Agents.Queues {
@@ -312,14 +315,15 @@ func (c *Collector) collectQueue(httpClient *http.Client, result *Result, queue 
 	result.Cluster = queueMetrics.Cluster.Name
 
 	result.Queues[queue] = map[string]int{
-		ScheduledJobsCount:  queueMetrics.Jobs.Scheduled,
-		RunningJobsCount:    queueMetrics.Jobs.Running,
-		UnfinishedJobsCount: queueMetrics.Jobs.Total,
-		WaitingJobsCount:    queueMetrics.Jobs.Waiting,
-		IdleAgentCount:      queueMetrics.Agents.Idle,
-		BusyAgentCount:      queueMetrics.Agents.Busy,
-		TotalAgentCount:     queueMetrics.Agents.Total,
-		BusyAgentPercentage: busyAgentPercentage(queueMetrics.Agents),
+		ScheduledJobsCount:      queueMetrics.Jobs.Scheduled,
+		RunningJobsCount:        queueMetrics.Jobs.Running,
+		UnfinishedJobsCount:     queueMetrics.Jobs.Total,
+		WaitingJobsCount:        queueMetrics.Jobs.Waiting,
+		IdleAgentCount:          queueMetrics.Agents.Idle,
+		BusyAgentCount:          queueMetrics.Agents.Busy,
+		TotalAgentCount:         queueMetrics.Agents.Total,
+		BusyAgentPercentage:     busyAgentPercentage(queueMetrics.Agents),
+		BintiRequiredAgentCount: queueMetrics.Jobs.Scheduled + queueMetrics.Jobs.Running,
 	}
 	return nil
 }
