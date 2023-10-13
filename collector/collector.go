@@ -199,7 +199,7 @@ func (c *Collector) Collect() (*Result, error) {
 			result.Queues[queueName][RunningJobsCount] = queueJobMetrics.Running
 			result.Queues[queueName][UnfinishedJobsCount] = queueJobMetrics.Total
 			result.Queues[queueName][WaitingJobsCount] = queueJobMetrics.Waiting
-			result.Queues[queueName][BintiRequiredAgentCount] = queueJobMetrics.Waiting + queueJobMetrics.Running
+			result.Queues[queueName][BintiRequiredAgentCount] = queueJobMetrics.Scheduled + queueJobMetrics.Running
 		}
 
 		for queueName, queueAgentMetrics := range allMetrics.Agents.Queues {
@@ -289,7 +289,7 @@ func (c *Collector) Collect() (*Result, error) {
 				BusyAgentCount:          queueMetrics.Agents.Busy,
 				TotalAgentCount:         queueMetrics.Agents.Total,
 				BusyAgentPercentage:     busyAgentPercentage(queueMetrics.Agents),
-				BintiRequiredAgentCount: queueMetrics.Jobs.Waiting + queueMetrics.Jobs.Running,
+				BintiRequiredAgentCount: queueMetrics.Jobs.Scheduled + queueMetrics.Jobs.Running,
 			}
 		}
 	}
