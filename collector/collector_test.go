@@ -148,7 +148,8 @@ func TestCollectorWithSomeJobsAndAgentsForAllQueues(t *testing.T) {
          			  "waiting": 1
 					},
                     "binti": {
-         			  "waiting": 1
+         			  "waiting": 1,
+					  "running": 1
                     }
 				  }
 				},
