@@ -148,7 +148,8 @@ func TestCollectorWithSomeJobsAndAgentsForAllQueues(t *testing.T) {
          			  "waiting": 1
 					},
                     "binti": {
-         			  "waiting": 1
+         			  "scheduled": 1,
+					  "running": 1
                     }
 				  }
 				},
@@ -205,7 +206,7 @@ func TestCollectorWithSomeJobsAndAgentsForAllQueues(t *testing.T) {
 		{"Queue.default", res.Queues["default"], BusyAgentCount, 1},
 		{"Queue.default", res.Queues["default"], IdleAgentCount, 0},
 		{"Queue.default", res.Queues["default"], WaitingJobsCount, 0},
-		{"Queue.default", res.Queues["default"], BintiRequiredAgentCount, 1},
+		{"Queue.default", res.Queues["default"], BintiRequiredAgentCount, 3},
 
 		{"Queue.deploy", res.Queues["deploy"], RunningJobsCount, 0},
 		{"Queue.deploy", res.Queues["deploy"], ScheduledJobsCount, 1},
