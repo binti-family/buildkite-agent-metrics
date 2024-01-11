@@ -4,22 +4,22 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/buildkite/buildkite-agent-metrics/backend"
-	"github.com/buildkite/buildkite-agent-metrics/collector"
-	"github.com/buildkite/buildkite-agent-metrics/version"
+	"github.com/buildkite/buildkite-agent-metrics/v5/backend"
+	"github.com/buildkite/buildkite-agent-metrics/v5/collector"
+	"github.com/buildkite/buildkite-agent-metrics/v5/version"
 )
 
-var bk backend.Backend
+// Where we send metrics
+var metricsBackend backend.Backend
 
 func main() {
 	var (
-		token       = flag.String("token", "", "A Buildkite Agent Registration Token")
 		interval    = flag.Duration("interval", 0, "Update metrics every interval, rather than once")
 		showVersion = flag.Bool("version", false, "Show the version")
 		quiet       = flag.Bool("quiet", false, "Only print errors")
@@ -30,7 +30,7 @@ func main() {
 		timeout     = flag.Int("timeout", 15, "Timeout, in seconds, for HTTP requests to Buildkite API")
 
 		// backend config
-		backendOpt     = flag.String("backend", "cloudwatch", "Specify the backend to use: cloudwatch, statsd, prometheus, stackdriver")
+		backendOpt     = flag.String("backend", "cloudwatch", "Specify the backend to use: cloudwatch, newrelic, prometheus, stackdriver, statsd")
 		statsdHost     = flag.String("statsd-host", "127.0.0.1:8125", "Specify the StatsD server")
 		statsdTags     = flag.Bool("statsd-tags", false, "Whether your StatsD server supports tagging like Datadog")
 		prometheusAddr = flag.String("prometheus-addr", ":8080", "Prometheus metrics transport bind address")
@@ -42,8 +42,9 @@ func main() {
 		nrLicenseKey   = flag.String("newrelic-license-key", "", "New Relic license key for publishing events")
 	)
 
-	// custom config for multiple queues
-	var queues stringSliceFlag
+	// custom config for multiple tokens and queues
+	var tokens, queues stringSliceFlag
+	flag.Var(&tokens, "token", "Buildkite Agent registration tokens. At least one is required. Multiple cluster tokens can be used to gather metrics for multiple clusters.")
 	flag.Var(&queues, "queue", "Specific queues to process")
 
 	flag.Parse()
@@ -53,13 +54,20 @@ func main() {
 		os.Exit(0)
 	}
 
-	if *token == "" {
-		if bkToken := os.Getenv("BUILDKITE_AGENT_TOKEN"); bkToken != "" {
-			*token = bkToken
-		} else {
-			fmt.Println("Must provide a token")
-			os.Exit(1)
+	if len(tokens) == 0 {
+		envTokens := strings.Split(os.Getenv("BUILDKITE_AGENT_TOKEN"), ",")
+		for _, t := range envTokens {
+			t = strings.TrimSpace(t)
+			if t == "" {
+				continue
+			}
+			tokens = append(tokens, t)
 		}
+	}
+
+	if len(tokens) == 0 {
+		fmt.Println("Must provide at least one token with either --token or BUILDKITE_AGENT_TOKEN")
+		os.Exit(1)
 	}
 
 	var err error
@@ -76,34 +84,44 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		bk = backend.NewCloudWatchBackend(region, dimensions)
+		metricsBackend = backend.NewCloudWatchBackend(region, dimensions)
+
 	case "statsd":
-		bk, err = backend.NewStatsDBackend(*statsdHost, *statsdTags)
+		metricsBackend, err = backend.NewStatsDBackend(*statsdHost, *statsdTags)
 		if err != nil {
 			fmt.Printf("Error starting StatsD, err: %v\n", err)
 			os.Exit(1)
 		}
+
 	case "prometheus":
-		bk = backend.NewPrometheusBackend(*prometheusPath, *prometheusAddr)
+		prom := backend.NewPrometheusBackend()
+		go prom.Serve(*prometheusPath, *prometheusAddr)
+		metricsBackend = prom
+
 	case "stackdriver":
-		bk, err = backend.NewStackDriverBackend(*gcpProjectID)
+		if *gcpProjectID == "" {
+			*gcpProjectID = os.Getenv(`GCP_PROJECT_ID`)
+		}
+		metricsBackend, err = backend.NewStackDriverBackend(*gcpProjectID)
 		if err != nil {
 			fmt.Printf("Error starting Stackdriver backend, err: %v\n", err)
 			os.Exit(1)
 		}
+
 	case "newrelic":
-		bk, err = backend.NewNewRelicBackend(*nrAppName, *nrLicenseKey)
+		metricsBackend, err = backend.NewNewRelicBackend(*nrAppName, *nrLicenseKey)
 		if err != nil {
 			fmt.Printf("Error starting New Relic client: %v\n", err)
 			os.Exit(1)
 		}
+
 	default:
-		fmt.Println("Must provide a supported backend: cloudwatch, statsd, prometheus, stackdriver, newrelic")
+		fmt.Println("Must provide a supported backend: cloudwatch, newrelic, prometheus, stackdriver, statsd")
 		os.Exit(1)
 	}
 
 	if *quiet {
-		log.SetOutput(ioutil.Discard)
+		log.SetOutput(io.Discard)
 	}
 
 	userAgent := fmt.Sprintf("buildkite-agent-metrics/%s buildkite-agent-metrics-cli", version.Version)
@@ -111,42 +129,65 @@ func main() {
 		userAgent += fmt.Sprintf(" interval=%s", *interval)
 	}
 
-	c := collector.Collector{
-		UserAgent: userAgent,
-		Endpoint:  *endpoint,
-		Token:     *token,
-		Queues:    []string(queues),
-		Quiet:     *quiet,
-		Debug:     *debug,
-		DebugHttp: *debugHttp,
-		Timeout:   *timeout,
+	// Queues passed as flags take precedence. But if no queues are passed in we
+	// check env vars. If no env vars are defined we default to ingesting metrics
+	// for all queues.
+	// NOTE: `BUILDKITE_QUEUE` is a comma separated string of queues
+	// i.e. "default,deploy,test"
+	if len(queues) == 0 {
+		if q, exists := os.LookupEnv(`BUILDKITE_QUEUE`); exists {
+			queues = strings.Split(q, ",")
+		}
 	}
 
-	f := func() (time.Duration, error) {
-		t := time.Now()
+	collectors := make([]*collector.Collector, 0, len(tokens))
+	for _, token := range tokens {
+		collectors = append(collectors, &collector.Collector{
+			UserAgent: userAgent,
+			Endpoint:  *endpoint,
+			Token:     token,
+			Queues:    []string(queues),
+			Quiet:     *quiet,
+			Debug:     *debug,
+			DebugHttp: *debugHttp,
+			Timeout:   *timeout,
+		})
+	}
 
-		result, err := c.Collect()
-		if err != nil {
-			fmt.Printf("Error collecting agent metrics, err: %s\n", err)
-			if errors.Is(err, collector.ErrUnauthorized) {
-				// Unique exit code to signal HTTP 401
-				os.Exit(4)
-			}
-			return time.Duration(0), err
-		}
+	collectFunc := func() (time.Duration, error) {
+		start := time.Now()
 
-		if !*dryRun {
-			err = bk.Collect(result)
+		// minimum result.PollDuration across collectors
+		var pollDuration time.Duration
+
+		for _, c := range collectors {
+			result, err := c.Collect()
 			if err != nil {
+				fmt.Printf("Error collecting agent metrics, err: %s\n", err)
+				if errors.Is(err, collector.ErrUnauthorized) {
+					// Unique exit code to signal HTTP 401
+					os.Exit(4)
+				}
 				return time.Duration(0), err
 			}
+
+			if *dryRun {
+				continue
+			}
+
+			if err := metricsBackend.Collect(result); err != nil {
+				return time.Duration(0), err
+			}
+			if result.PollDuration > pollDuration {
+				pollDuration = result.PollDuration
+			}
 		}
 
-		log.Printf("Finished in %s", time.Now().Sub(t))
-		return result.PollDuration, nil
+		log.Printf("Finished in %s", time.Since(start))
+		return pollDuration, nil
 	}
 
-	minPollDuration, err := f()
+	minPollDuration, err := collectFunc()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -164,7 +205,7 @@ func main() {
 			log.Printf("Waiting for %v (minimum of %v)", waitTime, minPollDuration)
 			time.Sleep(waitTime)
 
-			minPollDuration, err = f()
+			minPollDuration, err = collectFunc()
 			if err != nil {
 				fmt.Println(err)
 			}

@@ -4,6 +4,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [v5.9.3](https://github.com/buildkite/buildkite-agent-metrics/tree/v5.9.3) (2023-12-19)
+[Full Changelog](https://github.com/buildkite/buildkite-agent-metrics/compare/v5.9.2...v5.9.3)
+
+### Changed
+- Add v5 to module path [#248](https://github.com/buildkite/buildkite-agent-metrics/pull/248) (@DrJosh9000)
+
+### Dependencies
+- build(deps): bump golang.org/x/crypto from 0.14.0 to 0.17.0 [#246](https://github.com/buildkite/buildkite-agent-metrics/pull/246) (@dependabot[bot])
+- build(deps): bump cloud.google.com/go/monitoring from 1.16.3 to 1.17.0 [#245](https://github.com/buildkite/buildkite-agent-metrics/pull/245) (@dependabot[bot])
+- build(deps): bump github.com/aws/aws-lambda-go from 1.41.0 to 1.42.0 [#244](https://github.com/buildkite/buildkite-agent-metrics/pull/244) (@dependabot[bot])
+
+## [v5.9.2](https://github.com/buildkite/buildkite-agent-metrics/tree/v5.9.2) (2023-12-12)
+[Full Changelog](https://github.com/buildkite/buildkite-agent-metrics/compare/v5.9.1...v5.9.2)
+
+### Fixed
+- Fix non-Secrets Manager token providers [#243](https://github.com/buildkite/buildkite-agent-metrics/pull/243) (@DrJosh9000)
+
+### Changed
+- Allow env vars to control debug logging for the lambda [#238](https://github.com/buildkite/buildkite-agent-metrics/pull/238) (@triarius)
+
+### Dependencies
+- Bump github.com/aws/aws-sdk-go from 1.48.3 to 1.48.4 to 1.48.16 [#237](https://github.com/buildkite/buildkite-agent-metrics/pull/237), [#241](https://github.com/buildkite/buildkite-agent-metrics/pull/241) (@dependabot[bot])
+
+## [v5.9.1](https://github.com/buildkite/buildkite-agent-metrics/tree/v5.9.1) (2023-11-27)
+[Full Changelog](https://github.com/buildkite/buildkite-agent-metrics/compare/v5.9.0...v5.9.1)
+
+### Changed
+- Support for multiple secrets manager secrets command seperated [#233](https://github.com/buildkite/buildkite-agent-metrics/pull/233) (@lucylura)
+
+### Fixed
+- Ignore Cluster label/dimension/tag for empty unclustered queues. This may fix continuity errors when clusters are not used [#234](https://github.com/buildkite/buildkite-agent-metrics/pull/234) (@triarius)
+
+### Internal
+- Document SSM Parameters names may be comma separated [#235](https://github.com/buildkite/buildkite-agent-metrics/pull/235) (@triarius)
+
+### Dependencies
+- build(deps): bump github.com/aws/aws-sdk-go from 1.47.3 to 1.48.3 [#232](https://github.com/buildkite/buildkite-agent-metrics/pull/232) (@dependabot[bot])
+
+## [v5.9.0](https://github.com/buildkite/buildkite-agent-metrics/tree/v5.9.0) (2023-11-22)
+[Full Changelog](https://github.com/buildkite/buildkite-agent-metrics/compare/v5.8.0...v5.9.0)
+
+> [!WARNING]
+> This release adds a new Cluster label/tag/dimension, which is populated when using agent cluster tokens. This may break continuity with existing time series!
+
+### Added
+- Collect from multiple clusters [#227](https://github.com/buildkite/buildkite-agent-metrics/pull/227) (@DrJosh9000)
+- feat(gcp): add env vars for buildkite queues and gcp project id [#212](https://github.com/buildkite/buildkite-agent-metrics/pull/212) (@NotArpit)
+
+### Fixed
+- Change build process to better support `provided.al2` [#225](https://github.com/buildkite/buildkite-agent-metrics/pull/225) (@triarius)
+- fix(collector): exit on 401 when queues specified [#211](https://github.com/buildkite/buildkite-agent-metrics/pull/211) (@NotArpit)
+- Fix another reference to go1.x [#230](https://github.com/buildkite/buildkite-agent-metrics/pull/230) (@jradtilbrook)
+
+### Internal
+- Split Collect [#226](https://github.com/buildkite/buildkite-agent-metrics/pull/226) (@DrJosh9000)
+- Various dependency updates [#206](https://github.com/buildkite/buildkite-agent-metrics/pull/206), [#208](https://github.com/buildkite/buildkite-agent-metrics/pull/208), [#213](https://github.com/buildkite/buildkite-agent-metrics/pull/213), [#215](https://github.com/buildkite/buildkite-agent-metrics/pull/215), [#216](https://github.com/buildkite/buildkite-agent-metrics/pull/216), [#217](https://github.com/buildkite/buildkite-agent-metrics/pull/217), [#218](https://github.com/buildkite/buildkite-agent-metrics/pull/218), [#219](https://github.com/buildkite/buildkite-agent-metrics/pull/219), [#220](https://github.com/buildkite/buildkite-agent-metrics/pull/220), [#221](https://github.com/buildkite/buildkite-agent-metrics/pull/221), [#222](https://github.com/buildkite/buildkite-agent-metrics/pull/222), [#223](https://github.com/buildkite/buildkite-agent-metrics/pull/223) (@dependabot[bot])
+
 ## [v5.8.0](https://github.com/buildkite/buildkite-agent-metrics/tree/v5.8.0) (2023-09-15)
 [Full Changelog](https://github.com/buildkite/buildkite-agent-metrics/compare/v5.7.0...v5.8.0)
 
