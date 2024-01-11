@@ -206,7 +206,7 @@ func TestCollectorWithSomeJobsAndAgentsForAllQueues(t *testing.T) {
 		{"Queue.default", res.Queues["default"], BusyAgentCount, 1},
 		{"Queue.default", res.Queues["default"], IdleAgentCount, 0},
 		{"Queue.default", res.Queues["default"], WaitingJobsCount, 0},
-		{"Queue.default", res.Queues["default"], BintiRequiredAgentCount, 3},
+		{"Queue.default", res.Queues["default"], BintiRequiredAgentCount, 1},
 
 		{"Queue.deploy", res.Queues["deploy"], RunningJobsCount, 0},
 		{"Queue.deploy", res.Queues["deploy"], ScheduledJobsCount, 1},
@@ -219,10 +219,10 @@ func TestCollectorWithSomeJobsAndAgentsForAllQueues(t *testing.T) {
 
 		{"Queue.default", res.Queues["binti"], TotalAgentCount, 1},
 		{"Queue.deploy", res.Queues["binti"], BusyAgentCount, 1},
-		{"Queue.deploy", res.Queues["binti"], BintiRequiredAgentCount, 2},
+		{"Queue.deploy", res.Queues["binti"], BintiRequiredAgentCount, 1},
 	}
 
-	for queue, _ := range res.Queues {
+	for queue := range res.Queues {
 		switch queue {
 		case "default", "deploy", "binti":
 			continue
@@ -251,6 +251,7 @@ func TestCollectorWithSomeJobsAndAgentsForAQueue(t *testing.T) {
 				"jobs": {
 				  "scheduled": 3,
 				  "running": 1,
+  				  "waiting": 1,
 				  "total": 4
 				},
 				"agents": {
@@ -285,10 +286,12 @@ func TestCollectorWithSomeJobsAndAgentsForAQueue(t *testing.T) {
 		{"Queue.deploy", res.Queues["deploy"], RunningJobsCount, 1},
 		{"Queue.deploy", res.Queues["deploy"], ScheduledJobsCount, 3},
 		{"Queue.deploy", res.Queues["deploy"], UnfinishedJobsCount, 4},
+		{"Queue.deploy", res.Queues["deploy"], WaitingJobsCount, 1},
 		{"Queue.deploy", res.Queues["deploy"], TotalAgentCount, 1},
 		{"Queue.deploy", res.Queues["deploy"], BusyAgentCount, 1},
 		{"Queue.deploy", res.Queues["deploy"], IdleAgentCount, 0},
 		{"Queue.deploy", res.Queues["deploy"], BusyAgentPercentage, 100},
+		{"Queue.deploy", res.Queues["deploy"], BintiRequiredAgentCount, 2},
 	}
 
 	for _, tc := range testCases {
